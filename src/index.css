@@ -255,6 +255,27 @@ body {
   background-image: linear-gradient(100deg, rgba(6,9,13,.94) 20%, rgba(6,9,13,.72) 55%, rgba(6,9,13,.5)), url("https://image.qwenlm.ai/generated-images/01341944-0d75-4272-b070-406716c3054a/_result.png");
   background-size: cover; background-position: center;
 }
+
+/* پس‌زمینه «نقشه مهندسی» — قابل انتخاب در شخصی‌سازی صفحه ورود */
+.login-bg-blueprint {
+  background-color: #0a1a30;
+  background-image:
+    radial-gradient(circle at 80% 18%, rgba(90,170,235,.16), transparent 45%),
+    radial-gradient(circle at 12% 88%, rgba(245,165,36,.08), transparent 40%),
+    linear-gradient(rgba(125,185,240,.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,185,240,.14) 1px, transparent 1px),
+    linear-gradient(rgba(125,185,240,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,185,240,.05) 1px, transparent 1px);
+  background-size: auto, auto, 130px 130px, 130px 130px, 26px 26px, 26px 26px;
+}
+
+/* پس‌زمینه «تیره ساده» با هاله رنگ سازمانی */
+.login-bg-plain {
+  background:
+    radial-gradient(1000px 560px at 85% -8%, color-mix(in srgb, var(--primary) 17%, transparent), transparent 62%),
+    radial-gradient(800px 500px at -10% 105%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    #0d1013;
+}
 .grid-overlay {
   background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
   background-size: 44px 44px;

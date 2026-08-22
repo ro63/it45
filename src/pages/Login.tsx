@@ -2,7 +2,7 @@
  * صفحه ورود — فوق‌العاده شیک و مدرن (بند ۶۲)
  * پس‌زمینه صنعتی، نشانگر زنده اتصال به سرور، Toast و ورود سریع آزمایشی
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useApp } from "../lib/store";
 import { fa, faTime } from "../lib/util";
 import { Icon, useNow } from "../components/ui";
@@ -16,8 +16,17 @@ const LOGIN_THEMES = [
   { id: "nipco", name: "سازمانی NIPCO", colors: ["#0a1626", "#ff7a1a"] },
 ];
 
-/** پنل شناور شخصی‌سازی ظاهر — حتی پیش از ورود قابل استفاده است و در مرورگر ذخیره می‌شود */
-function ThemeDock() {
+export type LoginBg = "photo" | "blueprint" | "plain";
+const BG_KEY = "nipco-login-bg";
+
+const LOGIN_BGS: { id: LoginBg; name: string; css: CSSProperties }[] = [
+  { id: "photo", name: "کارگاه صنعتی", css: { backgroundImage: "linear-gradient(rgba(6,9,13,.55), rgba(6,9,13,.55)), url('https://image.qwenlm.ai/generated-images/01341944-0d75-4272-b070-406716c3054a/_result.png')", backgroundSize: "cover", backgroundPosition: "center" } },
+  { id: "blueprint", name: "نقشه مهندسی", css: { backgroundColor: "#0a1a30", backgroundImage: "linear-gradient(rgba(125,185,240,.25) 1px, transparent 1px), linear-gradient(90deg, rgba(125,185,240,.25) 1px, transparent 1px)", backgroundSize: "14px 14px" } },
+  { id: "plain", name: "تیره ساده", css: { background: "radial-gradient(circle at 75% 20%, rgba(245,165,36,.35), transparent 55%), #0d1013" } },
+];
+
+/** پنل شناور شخصی‌سازی — حتی پیش از ورود قابل استفاده است و در مرورگر ذخیره می‌شود (بند ۶۴) */
+function ThemeDock({ bg, setBg }: { bg: LoginBg; setBg: (b: LoginBg) => void }) {
   const { st, setTheme } = useApp();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState<ThemeCustom>(st.theme.custom);
@@ -26,18 +35,45 @@ function ThemeDock() {
 
   return (
     <>
+      {/* دکمه برجسته با برچسب و پالس توجه */}
       <button onClick={() => setOpen(!open)} title="شخصی‌سازی ظاهر سامانه" aria-label="شخصی‌سازی ظاهر"
-        className="fixed top-5 left-5 z-[60] w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95"
-        style={{ background: "rgba(14,18,24,.78)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,.16)", color: "var(--primary)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }}>
-        <Icon name="palette" size={19} />
+        className="fixed top-5 left-5 z-[60] flex items-center gap-2 pl-4 pr-3 py-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95"
+        style={{ background: "rgba(14,18,24,.82)", backdropFilter: "blur(14px)", border: "1px solid color-mix(in srgb, var(--primary) 45%, rgba(255,255,255,.15))", color: "var(--primary)", boxShadow: "0 10px 30px rgba(0,0,0,.5), 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent)" }}>
+        <span className="relative flex w-2 h-2">
+          <span className="absolute inline-flex w-full h-full rounded-full opacity-70" style={{ background: "var(--primary)", animation: "pulseDot 1.8s ease infinite" }} />
+          <span className="relative inline-flex w-2 h-2 rounded-full" style={{ background: "var(--primary)" }} />
+        </span>
+        <Icon name="palette" size={16} />
+        <span className="text-[11.5px] font-extrabold text-white">شخصی‌سازی</span>
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
-          <div className="fixed top-[72px] left-5 z-[60] glass rounded-xl p-4 w-[304px] anim-pop" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.55)", color: "#e7ebef" }}>
+          <div className="fixed top-[74px] left-5 z-[60] glass rounded-xl p-4 w-[308px] anim-pop max-h-[calc(100vh-100px)] overflow-auto" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.55)", color: "#e7ebef" }}>
             <div className="flex items-center justify-between mb-3">
-              <span className="font-extrabold text-[13px] flex items-center gap-2"><Icon name="palette" size={15} /> شخصی‌سازی ظاهر</span>
+              <span className="font-extrabold text-[13px] flex items-center gap-2"><Icon name="palette" size={15} /> شخصی‌سازی سامانه</span>
               <button className="cursor-pointer opacity-60 hover:opacity-100 transition-opacity" onClick={() => setOpen(false)} aria-label="بستن"><Icon name="x" size={15} /></button>
+            </div>
+
+            {/* پس‌زمینه صفحه ورود */}
+            <div className="mb-4">
+              <label style={lbl}>پس‌زمینه صفحه ورود</label>
+              <div className="grid grid-cols-3 gap-2">
+                {LOGIN_BGS.map((b) => (
+                  <button key={b.id} onClick={() => setBg(b.id)}
+                    className="rounded-lg overflow-hidden cursor-pointer transition-all duration-150 hover:-translate-y-0.5"
+                    style={{ border: `1.5px solid ${bg === b.id ? "var(--primary)" : "rgba(255,255,255,.14)"}` }}>
+                    <span className="block h-11" style={b.css} />
+                    <span className="block text-[9.5px] font-bold py-1.5" style={{ background: bg === b.id ? "color-mix(in srgb, var(--primary) 16%, transparent)" : "rgba(255,255,255,.05)", color: bg === b.id ? "var(--primary)" : "rgba(231,235,239,.75)" }}>{b.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mb-3">
+              <span className="flex-1 h-px" style={{ background: "rgba(255,255,255,.12)" }} />
+              <span className="text-[9.5px] font-bold" style={{ color: "rgba(231,235,239,.4)" }}>تم کل سامانه</span>
+              <span className="flex-1 h-px" style={{ background: "rgba(255,255,255,.12)" }} />
             </div>
 
             {/* انتخاب تم آماده */}
@@ -124,6 +160,14 @@ export function Login() {
   const [ping, setPing] = useState(23);
   const now = useNow(1000);
 
+  /* پس‌زمینه شخصی‌سازی‌شده صفحه ورود — ماندگار در مرورگر (بند ۶۴) */
+  const [bg, setBgState] = useState<LoginBg>(() => {
+    const v = localStorage.getItem(BG_KEY);
+    return v === "blueprint" || v === "plain" ? v : "photo";
+  });
+  const setBg = (b: LoginBg) => { setBgState(b); localStorage.setItem(BG_KEY, b); };
+  const bgClass = bg === "photo" ? "login-bg" : bg === "blueprint" ? "login-bg-blueprint" : "login-bg-plain";
+
   /* شبیه‌سازی پایش تأخیر سرور */
   useEffect(() => {
     const t = setInterval(() => setPing(14 + Math.floor(Math.random() * 34)), 2600);
@@ -142,8 +186,8 @@ export function Login() {
   };
 
   return (
-    <div className="login-bg min-h-screen relative overflow-hidden" style={{ color: "#e7ebef" }}>
-      <ThemeDock />
+    <div className={`${bgClass} min-h-screen relative overflow-hidden`} style={{ color: "#e7ebef" }}>
+      <ThemeDock bg={bg} setBg={setBg} />
       <div className="grid-overlay absolute inset-0" />
       {/* نوار خطر صنعتی */}
       <div className="hazard absolute top-0 left-0 right-0 h-[6px] opacity-80" />
