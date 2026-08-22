@@ -25,34 +25,57 @@ const LOGIN_BGS: { id: LoginBg; name: string; css: CSSProperties }[] = [
   { id: "plain", name: "تیره ساده", css: { background: "radial-gradient(circle at 75% 20%, rgba(245,165,36,.35), transparent 55%), #0d1013" } },
 ];
 
+/** رنگ‌های پیشنهادی برای تغییر سریع رنگ اصلی */
+const SWATCHES = ["#f5a524", "#ff7a1a", "#2f6db3", "#0f8b8d", "#33c07d", "#e5484d", "#ffd60a", "#5aa7d6"];
+const DEFAULT_CUSTOM: ThemeCustom = { mode: "dark", primary: "#f5a524", accent: "#53b8d8", radius: 10, font: "Vazirmatn" };
+
 /** پنل شناور شخصی‌سازی — حتی پیش از ورود قابل استفاده است و در مرورگر ذخیره می‌شود (بند ۶۴) */
 function ThemeDock({ bg, setBg }: { bg: LoginBg; setBg: (b: LoginBg) => void }) {
-  const { st, setTheme } = useApp();
+  const { st, setTheme, toast } = useApp();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState<ThemeCustom>(st.theme.custom);
   const lbl = { fontSize: 10, fontWeight: 700, color: "rgba(231,235,239,.55)", display: "block", marginBottom: 4 } as const;
   const darkCtl = { background: "rgba(255,255,255,.07)", borderColor: "rgba(255,255,255,.15)", color: "#e7ebef" };
 
+  const reset = () => {
+    setBg("photo");
+    setCustom(DEFAULT_CUSTOM);
+    setTheme({ id: "industrial-dark", custom: DEFAULT_CUSTOM });
+    toast("info", "ظاهر سامانه به حالت پیش‌فرض بازگشت");
+  };
+
   return (
     <>
-      {/* دکمه برجسته با برچسب و پالس توجه */}
-      <button onClick={() => setOpen(!open)} title="شخصی‌سازی ظاهر سامانه" aria-label="شخصی‌سازی ظاهر"
-        className="fixed top-5 left-5 z-[60] flex items-center gap-2 pl-4 pr-3 py-2.5 rounded-full cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95"
-        style={{ background: "rgba(14,18,24,.82)", backdropFilter: "blur(14px)", border: "1px solid color-mix(in srgb, var(--primary) 45%, rgba(255,255,255,.15))", color: "var(--primary)", boxShadow: "0 10px 30px rgba(0,0,0,.5), 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent)" }}>
-        <span className="relative flex w-2 h-2">
-          <span className="absolute inline-flex w-full h-full rounded-full opacity-70" style={{ background: "var(--primary)", animation: "pulseDot 1.8s ease infinite" }} />
-          <span className="relative inline-flex w-2 h-2 rounded-full" style={{ background: "var(--primary)" }} />
+      {/* دکمه شناور شخصی‌سازی — گوشه پایین، همیشه در دسترس (بند ۶۴) */}
+      <button onClick={() => setOpen(!open)} aria-label="شخصی‌سازی ظاهر سامانه" title="شخصی‌سازی ظاهر"
+        className="group fixed bottom-5 left-5 z-[60] cursor-pointer"
+        style={{ width: 54, height: 54 }}>
+        {/* حلقه چرخان تزئینی */}
+        <span className="absolute inset-[-5px] rounded-full opacity-70"
+          style={{ border: "1.5px dashed color-mix(in srgb, var(--primary) 65%, transparent)", animation: "spin 10s linear infinite" }} />
+        <span className="absolute inset-0 rounded-full grid place-items-center transition-transform duration-300 group-hover:scale-110 group-active:scale-95"
+          style={{ background: "var(--primary)", boxShadow: "0 14px 34px color-mix(in srgb, var(--primary) 45%, rgba(0,0,0,.55))" }}>
+          <Icon name="palette" size={23} className="transition-transform duration-500 group-hover:rotate-45" />
         </span>
-        <Icon name="palette" size={16} />
-        <span className="text-[11.5px] font-extrabold text-white">شخصی‌سازی</span>
+        {/* برچسب راهنما هنگام hover در دسکتاپ */}
+        <span className="hidden md:group-hover:block absolute top-1/2 -translate-y-1/2 right-[calc(100%+12px)] whitespace-nowrap text-[10.5px] font-extrabold px-3 py-1.5 rounded-lg pointer-events-none anim-in"
+          style={{ background: "rgba(14,18,24,.9)", backdropFilter: "blur(10px)", color: "var(--primary)", border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)" }}>
+          شخصی‌سازی ظاهر
+        </span>
       </button>
+
       {open && (
         <>
           <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
-          <div className="fixed top-[74px] left-5 z-[60] glass rounded-xl p-4 w-[308px] anim-pop max-h-[calc(100vh-100px)] overflow-auto" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.55)", color: "#e7ebef" }}>
+          <div className="fixed bottom-[86px] left-5 z-[60] glass rounded-xl p-4 w-[318px] max-w-[calc(100vw-40px)] anim-pop overflow-auto" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.55)", color: "#e7ebef", maxHeight: "min(66vh, 560px)" }}>
             <div className="flex items-center justify-between mb-3">
               <span className="font-extrabold text-[13px] flex items-center gap-2"><Icon name="palette" size={15} /> شخصی‌سازی سامانه</span>
-              <button className="cursor-pointer opacity-60 hover:opacity-100 transition-opacity" onClick={() => setOpen(false)} aria-label="بستن"><Icon name="x" size={15} /></button>
+              <span className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold px-2 py-1 rounded-md" style={{ background: "color-mix(in srgb, var(--primary) 16%, transparent)", color: "var(--primary)" }}>
+                  {st.theme.id === "custom" ? "تم سفارشی" : LOGIN_THEMES.find((t) => t.id === st.theme.id)?.name ?? ""}
+                </span>
+                <button className="cursor-pointer opacity-60 hover:opacity-100 transition-opacity" onClick={() => setOpen(false)} aria-label="بستن"><Icon name="x" size={15} /></button>
+              </span>
             </div>
 
             {/* پس‌زمینه صفحه ورود */}
@@ -90,10 +113,26 @@ function ThemeDock({ bg, setBg }: { bg: LoginBg; setBg: (b: LoginBg) => void }) 
               ))}
             </div>
 
+            {/* رنگ اصلی — انتخاب سریع با یک لمس */}
+            <div className="mb-2.5">
+              <label style={lbl}>رنگ اصلی سامانه</label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {SWATCHES.map((c) => (
+                  <button key={c} aria-label={`رنگ ${c}`} onClick={() => setCustom({ ...custom, primary: c })}
+                    className="cursor-pointer transition-transform duration-150 hover:scale-110 active:scale-95"
+                    style={{ width: 24, height: 24, borderRadius: 8, background: c, border: custom.primary.toLowerCase() === c ? "2px solid #fff" : "2px solid transparent", boxShadow: custom.primary.toLowerCase() === c ? `0 0 0 2px ${c}` : "none" }} />
+                ))}
+                <label className="relative cursor-pointer mr-1" title="انتخاب دلخواه">
+                  <span className="grid place-items-center text-[9px] font-extrabold" style={{ width: 24, height: 24, borderRadius: 8, background: "conic-gradient(#f5a524,#e5484d,#2f6db3,#33c07d,#f5a524)", color: "#000" }}>+</span>
+                  <input type="color" value={custom.primary} onChange={(e) => setCustom({ ...custom, primary: e.target.value })} className="absolute inset-0 opacity-0 cursor-pointer" />
+                </label>
+              </div>
+            </div>
+
             {/* رنگ‌ها */}
             <div className="grid grid-cols-2 gap-2.5 mb-2.5">
               <div>
-                <label style={lbl}>رنگ اصلی</label>
+                <label style={lbl}>رنگ اصلی (دقیق)</label>
                 <input type="color" value={custom.primary} onChange={(e) => setCustom({ ...custom, primary: e.target.value })}
                   className="w-full h-9 rounded-lg cursor-pointer" style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.15)" }} />
               </div>
@@ -129,11 +168,16 @@ function ThemeDock({ bg, setBg }: { bg: LoginBg; setBg: (b: LoginBg) => void }) 
               <input type="range" min={0} max={22} value={custom.radius} onChange={(e) => setCustom({ ...custom, radius: +e.target.value })} className="w-full" style={{ accentColor: "var(--primary)" }} />
             </div>
 
-            <button className="btn btn-primary w-full" onClick={() => setTheme({ id: "custom", custom })}>
-              <Icon name="check" size={14} /> اعمال تم سفارشی
-            </button>
+            <div className="flex gap-2">
+              <button className="btn btn-primary flex-1" onClick={() => setTheme({ id: "custom", custom })}>
+                <Icon name="check" size={14} /> اعمال تم سفارشی
+              </button>
+              <button className="btn btn-ghost !px-3" style={{ borderColor: "rgba(255,255,255,.18)", color: "rgba(231,235,239,.8)" }} onClick={reset} title="بازگشت به پیش‌فرض">
+                <Icon name="reset" size={14} />
+              </button>
+            </div>
             <p className="text-[9.5px] text-center mt-2.5 leading-5" style={{ color: "rgba(231,235,239,.4)" }}>
-              انتخاب شما در این مرورگر ذخیره می‌شود و بلافاصله در تمام صفحات اعمال خواهد شد
+              انتخاب شما در این مرورگر ذخیره می‌شود و بلافاصله در تمام صفحات — حتی پس از ورود — اعمال خواهد شد
             </p>
           </div>
         </>
