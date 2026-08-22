@@ -130,8 +130,8 @@ export interface AppState {
 /* ---------- ماتریس دسترسی (بندهای ۳۱ و ۳۲) ---------- */
 const PERMS: Record<Role, string[]> = {
   admin: ["*"],
-  supervisor: ["control", "dashboard", "reports", "equipment.manage", "checklist.manage", "users.view", "print", "export", "logs", "settings.view", "approve"],
-  engineer: ["control", "dashboard", "reports", "equipment.view", "checklist.view", "print", "export"],
+  supervisor: ["control", "dashboard", "reports", "equipment.manage", "checklist.manage", "users.view", "print", "export", "logs", "settings.view", "approve", "archive.close", "archive.view"],
+  engineer: ["control", "dashboard", "reports", "equipment.view", "checklist.view", "print", "export", "archive.view"],
   technician: ["control", "dashboard", "reports.view", "print"],
   viewer: ["dashboard", "reports.view"],
 };

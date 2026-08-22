@@ -5,9 +5,10 @@
  */
 import { useRef, useState } from "react";
 import { useApp } from "../lib/store";
-import { cx, fa, faNum } from "../lib/util";
-import { Icon, Badge, Toggle, Confirm, Dot } from "../components/ui";
-import type { ThemeCustom } from "../lib/types";
+import { todayJ, J_MONTHS } from "../lib/jalali";
+import { cx, fa, faDateLong, faNum } from "../lib/util";
+import { Icon, Badge, Toggle, Modal, Dot } from "../components/ui";
+import { can, type ThemeCustom } from "../lib/types";
 
 const THEMES = [
   { id: "industrial-dark", name: "صنعتی تاریک", desc: "پیش‌فرض — مناسب سالن تولید", colors: ["#0e1114", "#161b21", "#f5a524"] },
@@ -21,7 +22,13 @@ export function SettingsPage() {
   const isAdmin = me?.role === "admin";
   const [custom, setCustom] = useState<ThemeCustom>(st.theme.custom);
   const [confirmYear, setConfirmYear] = useState(false);
+  const [viewYear, setViewYear] = useState<{ jy: number; records: number; closedAt: number } | null>(null);
   const [testing, setTesting] = useState(false);
+  /* دسترسی‌های آرشیو بر اساس نقش کاربر (بندهای ۵۸ و ۵۹) */
+  const canClose = can(me?.role, "archive.close");
+  const canView = can(me?.role, "archive.view");
+  const today = todayJ();
+  const isEsfand = today.jm === 12;
   const fileRef = useRef<HTMLInputElement>(null);
   const fileRef2 = useRef<HTMLInputElement>(null);
 
@@ -191,20 +198,40 @@ export function SettingsPage() {
       {/* ---------- سال شمسی و آرشیو (بندهای ۵۸ و ۵۹) ---------- */}
       <section className="card p-5">
         <h3 className="font-bold text-[14px] mb-3 flex items-center gap-2"><Icon name="archive" size={16} /> مدیریت سال شمسی</h3>
+        <p className="text-[11px] mb-4 -mt-1 leading-6" style={{ color: "var(--muted)" }}>
+          بستن هر سال <b>در پایان سال (اسفند ماه)</b> و فقط توسط دارندگان دسترسی «بستن سال» انجام می‌شود؛
+          دسترسی به آرشیو سال‌های قبل نیز منوط به مجوز «مشاهده آرشیو» است و همواره فقط‌خواندنی خواهد بود.
+        </p>
+
+        {/* نمایش دسترسی کاربر جاری */}
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <span className="text-[11px] font-bold" style={{ color: "var(--soft)" }}>دسترسی‌های شما:</span>
+          <Badge kind={canClose ? "ok" : "neutral"}><Icon name={canClose ? "check" : "lock"} size={10} /> بستن سال شمسی</Badge>
+          <Badge kind={canView ? "ok" : "neutral"}><Icon name={canView ? "check" : "lock"} size={10} /> مشاهده آرشیو سال‌های قبل</Badge>
+          {!canClose && !canView && <span className="text-[10.5px]" style={{ color: "var(--muted)" }}>برای دریافت دسترسی با مدیر سیستم هماهنگ کنید</span>}
+        </div>
+
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <div className="card px-4 py-3" style={{ background: "var(--card2)" }}>
             <div className="text-[10.5px]" style={{ color: "var(--muted)" }}>سال کاری جاری</div>
             <div className="num text-[24px] font-bold" style={{ color: "var(--primary)" }}>{fa(st.currentYear)}</div>
           </div>
-          <div className="flex-1 min-w-[200px] text-[11.5px] leading-6" style={{ color: "var(--soft)" }}>
-            جریان پایان سال: <b>Close Shamsi Year ← Archive ← Backup ← Create New Year</b>.
-            سال‌های قبل به‌صورت فقط‌خواندنی در دسترس خواهند بود.
+          <div className="card px-4 py-3" style={{ background: "var(--card2)" }}>
+            <div className="text-[10.5px]" style={{ color: "var(--muted)" }}>تاریخ شمسی امروز</div>
+            <div className="text-[14px] font-bold">{J_MONTHS[today.jm - 1]} <span className="num text-[16px]" style={{ color: isEsfand ? "var(--ok)" : "var(--warn)" }}>{fa(today.jd)}</span></div>
           </div>
-          {isAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setConfirmYear(true)}><Icon name="archive" size={13} /> بستن سال {fa(st.currentYear)}</button>}
+          <div className="flex-1 min-w-[190px] text-[11.5px] leading-6" style={{ color: "var(--soft)" }}>
+            جریان پایان سال: <b>Close Shamsi Year ← Archive ← Backup ← Create New Year</b>
+          </div>
+          {canClose && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmYear(true)}>
+              <Icon name="archive" size={13} /> بستن سال {fa(st.currentYear)}
+            </button>
+          )}
         </div>
-        {st.archivedYears.length > 0 && (
+        {st.archivedYears.length > 0 ? (
           <table className="tbl">
-            <thead><tr><th>سال آرشیوشده</th><th>تعداد رکورد</th><th>تاریخ بسته شدن</th><th>دسترسی</th></tr></thead>
+            <thead><tr><th>سال آرشیوشده</th><th>تعداد رکورد</th><th>تاریخ بسته شدن</th><th>دسترسی</th><th></th></tr></thead>
             <tbody>
               {st.archivedYears.map((a) => (
                 <tr key={a.jy}>
@@ -212,10 +239,21 @@ export function SettingsPage() {
                   <td className="num">{faNum(a.records)}</td>
                   <td className="num">{new Date(a.closedAt).toLocaleDateString("fa-IR")}</td>
                   <td><Badge kind="info">فقط خواندنی</Badge></td>
+                  <td>
+                    {canView ? (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setViewYear(a)}><Icon name="eye" size={13} /> مشاهده آرشیو</button>
+                    ) : (
+                      <span className="chip"><Icon name="lock" size={11} /> بدون دسترسی</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        ) : (
+          <p className="text-[11.5px] rounded-lg p-3" style={{ background: "var(--card2)", color: "var(--muted)" }}>
+            هنوز سالی آرشیو نشده است — پس از بستن اولین سال، آرشیو آن در این فهرست قرار می‌گیرد.
+          </p>
         )}
       </section>
 
@@ -229,10 +267,67 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <Confirm open={confirmYear} onClose={() => setConfirmYear(false)} danger={false} yesLabel="بله، سال بسته شود"
-        title={`بستن سال شمسی ${fa(st.currentYear)}`}
-        body={`رکوردهای سال ${fa(st.currentYear)} آرشیو و فقط‌خواندنی می‌شوند، بکاپ کامل گرفته شده و سال جدید کاری آغاز می‌گردد. ادامه می‌دهید؟`}
-        onYes={closeYear} />
+      {/* مودال بستن سال — منوط به اسفند ماه و سطح دسترسی (بندهای ۵۸ و ۵۹) */}
+      <Modal open={confirmYear} onClose={() => setConfirmYear(false)} title={`بستن سال شمسی ${fa(st.currentYear)}`} icon="archive" width={490}>
+        <div className="space-y-3.5">
+          <div className="grid grid-cols-4 gap-1.5 text-center">
+            {["بستن سال", "آرشیو", "بکاپ کامل", "سال جدید"].map((s, i) => (
+              <div key={s} className="rounded-lg py-2.5 text-[10.5px] font-bold" style={{ background: "var(--card2)", border: "1px solid var(--line)" }}>
+                <span className="block num text-[14px] mb-1" style={{ color: "var(--primary)" }}>{fa(i + 1)}</span>{s}
+              </div>
+            ))}
+          </div>
+          {isEsfand ? (
+            <div className="rounded-lg p-3 text-[11.5px] font-bold flex items-center gap-2" style={{ background: "var(--okbg)", color: "var(--ok)" }}>
+              <Icon name="check" size={14} /> اکنون در اسفند ماه هستید — موعد استاندارد پایان سال شمسی
+            </div>
+          ) : (
+            <div className="rounded-lg p-3 text-[11.5px] leading-6" style={{ background: "var(--warnbg)", color: "var(--warn)", border: "1px solid color-mix(in srgb, var(--warn) 32%, transparent)" }}>
+              <b className="flex items-center gap-1.5 mb-1"><Icon name="alert" size={13} /> خارج از موعد پایان سال</b>
+              امروز {faDateLong(today)} است ({J_MONTHS[today.jm - 1]} ماه). بستن سال به‌طور استاندارد فقط در <b>اسفند ماه</b> انجام می‌شود
+              {isAdmin ? " — با اختیارات مدیر سیستم می‌توانید ادامه دهید." : " — ادامه این عملیات در ماه‌های دیگر فقط برای مدیر سیستم مجاز است."}
+            </div>
+          )}
+          <p className="text-[12px] leading-6" style={{ color: "var(--soft)" }}>
+            رکوردهای سال {fa(st.currentYear)} آرشیو و برای کاربران دارای مجوز به‌صورت <b>فقط‌خواندنی</b> در دسترس قرار می‌گیرند،
+            بکاپ کامل گرفته شده و سال کاری جدید آغاز می‌گردد.
+          </p>
+          <div className="flex justify-end gap-2 pt-1">
+            <button className="btn btn-ghost" onClick={() => setConfirmYear(false)}>انصراف</button>
+            <button className="btn btn-primary" disabled={!isEsfand && !isAdmin} onClick={() => { closeYear(); setConfirmYear(false); }}>
+              <Icon name="archive" size={14} />
+              {isEsfand ? "بله، سال بسته شود" : isAdmin ? "بستن با اختیارات مدیر" : "غیرمجاز در این ماه"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* مودال مشاهده آرشیو سال قبل — فقط‌خواندنی و منوط به مجوز (بند ۵۹) */}
+      <Modal open={!!viewYear} onClose={() => setViewYear(null)} title={`آرشیو سال شمسی ${fa(viewYear?.jy ?? 0)}`} icon="archive" width={460}>
+        {viewYear && (
+          <div className="space-y-3.5">
+            <div className="flex items-center gap-2">
+              <Badge kind="info"><Icon name="lock" size={10} /> دسترسی فقط خواندنی</Badge>
+              <Badge kind="primary">سال {fa(viewYear.jy)}</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="card p-4 text-center" style={{ background: "var(--card2)" }}>
+                <div className="num text-[24px] font-bold" style={{ color: "var(--primary)" }}>{faNum(viewYear.records)}</div>
+                <div className="text-[10.5px] font-bold mt-1" style={{ color: "var(--muted)" }}>رکورد آرشیوشده</div>
+              </div>
+              <div className="card p-4 text-center" style={{ background: "var(--card2)" }}>
+                <div className="num text-[17px] font-bold mt-1.5">{new Date(viewYear.closedAt).toLocaleDateString("fa-IR")}</div>
+                <div className="text-[10.5px] font-bold mt-1" style={{ color: "var(--muted)" }}>تاریخ بسته شدن</div>
+              </div>
+            </div>
+            <p className="text-[11.5px] leading-6 rounded-lg p-3" style={{ background: "var(--card2)", color: "var(--soft)" }}>
+              رکوردهای این سال قابل ویرایش یا حذف نیستند. برای گزارش‌گیری از داده‌های سال {fa(viewYear.jy)}،
+              بازه تاریخ فیلترها را در تب‌های <b>گزارشات</b> روی این سال تنظیم کنید.
+            </p>
+            <div className="flex justify-end"><button className="btn btn-ghost" onClick={() => setViewYear(null)}>بستن</button></div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

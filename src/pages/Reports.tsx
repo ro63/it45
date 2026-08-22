@@ -135,6 +135,35 @@ export function Reports() {
     return { series, byGroup };
   }, [st, r5.from, r5.to]); // eslint-disable-line
 
+  /* ---------- داده نمودارهای داخل هر تب (تابع فیلترهای همان تب) ---------- */
+  const dailyByDay = useMemo(() => {
+    const m = new Map<string, { j: JDate; n: number }>();
+    daily.forEach((c) => { const e = m.get(c.dateKey); if (e) e.n++; else m.set(c.dateKey, { j: c.date, n: 1 }); });
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-14).map(([, v]) => ({ label: fa(v.j.jd), value: v.n }));
+  }, [daily]);
+
+  const nokByLoc = useMemo(() => {
+    const m = new Map<string, number>();
+    nokRows.forEach((n) => { const l = n.rec.failLoc ?? "نامشخص"; m.set(l, (m.get(l) ?? 0) + 1); });
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([label, value]) => ({ label, value }));
+  }, [nokRows]);
+
+  const nokByGroup = useMemo(() => {
+    const m = new Map<string, number>();
+    nokRows.forEach((n) => {
+      const gid = st.equipment.find((e) => e.id === n.rec.equipmentId)?.groupId ?? "";
+      const name = st.groups.find((x) => x.id === gid)?.name ?? "—";
+      m.set(name, (m.get(name) ?? 0) + 1);
+    });
+    return [...m.entries()].map(([label, value]) => ({ label, value }));
+  }, [nokRows]); // eslint-disable-line
+
+  const opByDay = useMemo(() => {
+    const m = new Map<string, { j: JDate; n: number }>();
+    opRows.forEach((r) => { const e = m.get(r.dateKey); if (e) e.n += r.diff; else m.set(r.dateKey, { j: r.date, n: r.diff }); });
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-14).map(([, v]) => ({ label: fa(v.j.jd), value: +v.n.toFixed(1) }));
+  }, [opRows]);
+
   const presets = (set: (r: Range) => void) => (
     <div className="flex gap-1.5 flex-wrap">
       {[{ l: "امروز", r: { from: wd, to: wd } }, { l: "۷ روز", r: { from: jAddDays(wd, -6), to: wd } }, { l: "۳۰ روز", r: { from: jAddDays(wd, -29), to: wd } }, { l: "همه", r: { from: null, to: null } }].map((p) => (
@@ -196,6 +225,30 @@ export function Reports() {
               <button className="btn btn-ghost btn-sm" onClick={() => { setPrintRec(null); setPrintTbl({ title: "گزارش کنترل‌های روزانه", cols: ["تاریخ", "تجهیز", "کنترل", "تکنسین", "شیفت", "وضعیت"], rows: daily.map((c) => [faDate(c.date), eqName(c.equipmentId), st.checklists.find((x) => x.id === c.checklistId)?.title ?? "", techName(c.techId), `شیفت ${c.shift}`, c.status === "NOK" ? "نامنطبق" : "تکمیل"]) }); doPrint(); }}><Icon name="print" size={13} /> چاپ</button>
             </div>
           </div>
+          {daily.length > 0 && (
+            <div className="grid lg:grid-cols-3 gap-4 mb-4 anim-in">
+              <div className="card p-4 lg:col-span-2">
+                <h4 className="font-bold text-[12.5px] mb-4 flex items-center gap-2">
+                  <Icon name="reports" size={14} /> روند روزانه کنترل‌ها در بازه فیلترشده
+                  <span className="chip mr-auto"><Icon name="calendar" size={10} /> تقویم شمسی</span>
+                </h4>
+                <Bars data={dailyByDay} h={130} />
+              </div>
+              <div className="card p-4 flex flex-col items-center justify-center gap-3">
+                <h4 className="font-bold text-[12.5px] flex items-center gap-2"><Icon name="target" size={14} /> تفکیک وضعیت نتایج</h4>
+                <Donut size={128} thick={16} center={fa(daily.length)} sub="رکورد"
+                  segs={[
+                    { value: daily.filter((c) => c.status === "Completed").length, color: "var(--ok)", label: "تکمیل" },
+                    { value: daily.filter((c) => c.status === "NOK").length, color: "var(--nok)", label: "NOK" },
+                  ]} />
+                <div className="flex gap-4 text-[10.5px] font-bold" style={{ color: "var(--soft)" }}>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--ok)" }} /> تکمیل {fa(daily.filter((c) => c.status === "Completed").length)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--nok)" }} /> NOK {fa(daily.filter((c) => c.status === "NOK").length)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card overflow-auto">
             {daily.length === 0 ? <Empty icon="control" title="رکوردی با این فیلترها نیست" sub="بازه زمانی یا فیلترها را تغییر دهید" /> : (
               <table className="tbl">
@@ -235,6 +288,31 @@ export function Reports() {
               <button className="btn btn-ghost btn-sm" onClick={() => { setPrintRec(null); setPrintTbl({ title: "گزارش عدم انطباق‌ها (NOK / خارج از محدوده)", cols: ["تاریخ", "تجهیز", "آیتم", "نتیجه", "محل خرابی", "تکنسین"], rows: nokRows.map((n) => [faDate(n.rec.date), eqName(n.rec.equipmentId), n.item, n.result, n.rec.failLoc ?? "—", techName(n.rec.techId)]) }); doPrint(); }}><Icon name="print" size={13} /> چاپ</button>
             </div>
           </div>
+          {nokRows.length > 0 && (
+            <div className="grid lg:grid-cols-3 gap-4 mb-4 anim-in">
+              <div className="card p-4 lg:col-span-2">
+                <h4 className="font-bold text-[12.5px] mb-4 flex items-center gap-2">
+                  <Icon name="alert" size={14} /> پرتکرارترین محل‌های خرابی
+                  <span className="chip mr-auto" style={{ color: "var(--nok)" }}>{fa(nokRows.length)} مورد نامنطبق</span>
+                </h4>
+                <Bars data={nokByLoc} h={130} color="var(--nok)" />
+              </div>
+              <div className="card p-4 flex flex-col items-center justify-center gap-3">
+                <h4 className="font-bold text-[12.5px] flex items-center gap-2"><Icon name="layers" size={14} /> تفکیک گروه تجهیزات</h4>
+                <Donut size={128} thick={16} center={fa(nokRows.length)} sub="خطا"
+                  segs={nokByGroup.map((g, i) => ({ value: g.value, color: ["var(--nok)", "var(--warn)", "var(--info)", "var(--accent)", "var(--primary)"][i % 5], label: g.label }))} />
+                <div className="space-y-1 w-full">
+                  {nokByGroup.slice(0, 4).map((g, i) => (
+                    <div key={g.label} className="flex items-center gap-2 text-[10.5px] font-bold" style={{ color: "var(--soft)" }}>
+                      <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: ["var(--nok)", "var(--warn)", "var(--info)", "var(--accent)", "var(--primary)"][i % 5] }} />
+                      <span className="truncate">{g.label}</span><span className="num mr-auto">{fa(g.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card overflow-auto">
             {nokRows.length === 0 ? <Empty icon="check" title="عدم انطباقی یافت نشد" sub="در این بازه همه کنترل‌ها سالم ثبت شده‌اند" /> : (
               <table className="tbl">
@@ -272,6 +350,32 @@ export function Reports() {
               <button className="btn btn-ghost btn-sm" onClick={() => { setPrintRec(null); setPrintTbl({ title: "گزارش ساعت کارکرد (کمپرسور و لیفتراک)", cols: ["تاریخ", "تجهیز", "قبلی", "جدید", "اختلاف", "منبع", "کاربر"], rows: opRows.map((r) => [faDate(r.date), eqName(r.equipmentId), faNum(r.prev, 1), faNum(r.next, 1), faNum(r.diff, 1), r.source === "AUTO" ? "خودکار" : r.source === "MANUAL" ? "دستی" : "اصلاحی", techName(r.userId)]) }); doPrint(); }}><Icon name="print" size={13} /> چاپ</button>
             </div>
           </div>
+          {opRows.length > 0 && (
+            <div className="grid lg:grid-cols-3 gap-4 mb-4 anim-in">
+              <div className="card p-4 lg:col-span-2">
+                <h4 className="font-bold text-[12.5px] mb-3 flex items-center gap-2">
+                  <Icon name="gauge" size={14} /> مجموع کارکرد روزانه (اختلاف قرائت‌ها بر حسب ساعت)
+                  <span className="chip mr-auto"><Icon name="calendar" size={10} /> تقویم شمسی</span>
+                </h4>
+                <LineArea data={opByDay.map((d) => d.value)} labels={opByDay.map((d) => d.label)} h={140} color="var(--accent)" />
+              </div>
+              <div className="card p-4 flex flex-col items-center justify-center gap-3">
+                <h4 className="font-bold text-[12.5px] flex items-center gap-2"><Icon name="bolt" size={14} /> تفکیک منبع ثبت</h4>
+                <Donut size={128} thick={16} center={fa(opRows.length)} sub="قرائت"
+                  segs={[
+                    { value: opRows.filter((r) => r.source === "AUTO").length, color: "var(--info)", label: "PLC" },
+                    { value: opRows.filter((r) => r.source === "MANUAL").length, color: "var(--warn)", label: "دستی" },
+                    { value: opRows.filter((r) => r.source === "ADJUSTED").length, color: "var(--nok)", label: "اصلاحی" },
+                  ]} />
+                <div className="flex gap-3 flex-wrap justify-center text-[10.5px] font-bold" style={{ color: "var(--soft)" }}>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--info)" }} /> خودکار {fa(opRows.filter((r) => r.source === "AUTO").length)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--warn)" }} /> دستی {fa(opRows.filter((r) => r.source === "MANUAL").length)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--nok)" }} /> اصلاحی {fa(opRows.filter((r) => r.source === "ADJUSTED").length)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card overflow-auto">
             {opRows.length === 0 ? <Empty icon="gauge" title="قرائتی ثبت نشده" /> : (
               <table className="tbl">
@@ -307,6 +411,31 @@ export function Reports() {
               <button className="btn btn-ghost btn-sm" onClick={() => exportCSV(`nipco-perf-${jKey(wd).replace(/\//g, "")}`, ["تکنسین", "شیفت", "کل کنترل‌ها", "سالم", "نامنطبق", "پیش‌نویس باز", "درصد سلامت"], perf.map((p) => [p.u.name, `شیفت ${p.u.shift}`, p.total, p.ok, p.nok, p.drafts, `${p.pct}%`]))}><Icon name="download" size={13} /> Excel</button>
             </div>
           </div>
+          {perf.length > 0 && (
+            <div className="grid lg:grid-cols-3 gap-4 mb-4 anim-in">
+              <div className="card p-4 lg:col-span-2">
+                <h4 className="font-bold text-[12.5px] mb-4 flex items-center gap-2">
+                  <Icon name="users" size={14} /> مقایسه تعداد کنترل‌های انجام‌شده هر تکنسین
+                  <span className="chip mr-auto">بازه فیلترشده</span>
+                </h4>
+                <Bars data={perf.map((p) => ({ label: p.u.name.split(" ")[0], value: p.total }))} h={130} color="var(--accent)" />
+              </div>
+              <div className="card p-4 flex flex-col items-center justify-center gap-3">
+                <h4 className="font-bold text-[12.5px] flex items-center gap-2"><Icon name="shield" size={14} /> نرخ سلامت کل</h4>
+                <Donut size={128} thick={16}
+                  center={`${fa(perf.length ? Math.round((perf.reduce((a, p) => a + p.ok, 0) / Math.max(1, perf.reduce((a, p) => a + p.total, 0))) * 100) : 0)}٪`} sub="سالم"
+                  segs={[
+                    { value: perf.reduce((a, p) => a + p.ok, 0), color: "var(--ok)", label: "سالم" },
+                    { value: perf.reduce((a, p) => a + p.nok, 0), color: "var(--nok)", label: "NOK" },
+                  ]} />
+                <div className="flex gap-4 text-[10.5px] font-bold" style={{ color: "var(--soft)" }}>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--ok)" }} /> سالم {fa(perf.reduce((a, p) => a + p.ok, 0))}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: "var(--nok)" }} /> NOK {fa(perf.reduce((a, p) => a + p.nok, 0))}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             {perf.length === 0 && <div className="md:col-span-3"><Empty icon="users" title="عملکردی در این بازه ثبت نشده" /></div>}
             {perf.map((p) => (
