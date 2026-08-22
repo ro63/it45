@@ -63,6 +63,7 @@ export function Reports() {
   const [f4, setF4] = useState({ shift: 0 });
   const [r5, setR5] = useState<Range>(week);
   const [c5, setC5] = useState({ type: "bar", metric: "controls" });
+  const [f5, setF5] = useState({ eq: "", group: "", shift: 0, tech: "", status: "" });
 
   const [printRec, setPrintRec] = useState<PrintData | null>(null);
   const [printTbl, setPrintTbl] = useState<{ title: string; cols: string[]; rows: (string | number)[][] } | null>(null);
@@ -116,12 +117,19 @@ export function Reports() {
     }).filter((p) => p.total > 0 || p.drafts > 0);
   }, [st, r4.from, r4.to, f4]); // eslint-disable-line
 
-  /* ---------- تب ۵: نمودارها ---------- */
+  /* ---------- تب ۵: نمودارها — با اعمال همه فیلترها (بند ۵۲) ---------- */
   const chartData = useMemo(() => {
+    const filtered = st.controls.filter((c) =>
+      inRange(c.date, r5) &&
+      (!f5.eq || c.equipmentId === f5.eq) &&
+      (!f5.group || st.equipment.find((e) => e.id === c.equipmentId)?.groupId === f5.group) &&
+      (!f5.shift || c.shift === f5.shift) &&
+      (!f5.tech || c.techId === f5.tech) &&
+      (!f5.status || c.status === f5.status));
     const days = Array.from({ length: 14 }, (_, i) => jAddDays(wd, i - 13)).filter((d) => inRange(d, r5));
     const series = days.map((d) => {
       const k = jKey(d);
-      const recs = st.controls.filter((c) => c.dateKey === k);
+      const recs = filtered.filter((c) => c.dateKey === k);
       return {
         label: fa(d.jd),
         controls: recs.length,
@@ -130,10 +138,10 @@ export function Reports() {
     });
     const byGroup = st.groups.map((g) => ({
       label: g.name,
-      value: st.controls.filter((c) => inRange(c.date, r5) && st.equipment.find((e) => e.id === c.equipmentId)?.groupId === g.id).length,
+      value: filtered.filter((c) => st.equipment.find((e) => e.id === c.equipmentId)?.groupId === g.id).length,
     })).filter((x) => x.value > 0);
-    return { series, byGroup };
-  }, [st, r5.from, r5.to]); // eslint-disable-line
+    return { series, byGroup, total: filtered.length, nokTotal: filtered.filter((c) => c.status === "NOK").length };
+  }, [st, r5.from, r5.to, f5]); // eslint-disable-line
 
   /* ---------- داده نمودارهای داخل هر تب (تابع فیلترهای همان تب) ---------- */
   const dailyByDay = useMemo(() => {
@@ -463,21 +471,40 @@ export function Reports() {
         </div>
       )}
 
-      {/* ================= تب ۵: نمودارها ================= */}
+      {/* ================= تب ۵: نمودارها — همه فیلترها روی نمودار اعمال می‌شود (بند ۵۲) ================= */}
       {tab === "charts" && (
         <div className="anim-in">
+          <div className="card p-3.5 mb-3 flex flex-wrap items-center gap-2.5">
+            <Icon name="filter" size={15} />
+            <RangeFilter r={r5} set={setR5} />
+            <Sel v={f5.eq} set={(x) => setF5({ ...f5, eq: x })} opts={eqOpts} all="همه تجهیزات" />
+            <Sel v={f5.group} set={(x) => setF5({ ...f5, group: x })} opts={grpOpts} all="همه گروه‌ها" />
+            <Sel v={String(f5.shift)} set={(x) => setF5({ ...f5, shift: +x })} opts={[{ v: "1", l: "شیفت ۱" }, { v: "2", l: "شیفت ۲" }, { v: "3", l: "شیفت ۳" }]} all="همه شیفت‌ها" />
+            <Sel v={f5.tech} set={(x) => setF5({ ...f5, tech: x })} opts={techOpts} all="همه تکنسین‌ها" />
+            <Sel v={f5.status} set={(x) => setF5({ ...f5, status: x })} opts={[{ v: "Completed", l: "تکمیل‌شده" }, { v: "NOK", l: "نامنطبق" }]} all="همه وضعیت‌ها" />
+            {(f5.eq || f5.group || f5.shift || f5.tech || f5.status) && (
+              <button className="chip cursor-pointer transition-opacity hover:opacity-75" style={{ color: "var(--nok)", borderColor: "color-mix(in srgb, var(--nok) 40%, transparent)" }}
+                onClick={() => setF5({ eq: "", group: "", shift: 0, tech: "", status: "" })}>
+                <Icon name="x" size={11} /> پاک کردن فیلترها
+              </button>
+            )}
+          </div>
           <div className="card p-3.5 mb-4 flex flex-wrap items-center gap-2.5">
             <Icon name="reports" size={15} />
-            <RangeFilter r={r5} set={setR5} />
             <div className="tabs !w-auto">
               {[{ v: "bar", l: "میله‌ای" }, { v: "line", l: "خطی" }, { v: "area", l: "سطحی" }, { v: "pie", l: "دایره‌ای" }, { v: "donut", l: "دونات" }].map((x) => (
                 <button key={x.v} className={cx("tab !py-1.5 !px-3 !text-[11px]", c5.type === x.v && "on")} onClick={() => setC5({ ...c5, type: x.v })}>{x.l}</button>
               ))}
             </div>
             <Sel v={c5.metric} set={(x) => setC5({ ...c5, metric: x })} opts={[{ v: "controls", l: "تعداد کنترل‌ها" }, { v: "nok", l: "موارد NOK" }, { v: "group", l: "تفکیک گروه‌ها" }]} all="" />
+            <span className="chip mr-auto" style={{ color: "var(--primary)", borderColor: "color-mix(in srgb, var(--primary) 35%, transparent)" }}>
+              <Icon name="reports" size={11} /> <span className="num">{fa(chartData.total)}</span> رکورد در نمودار
+            </span>
           </div>
           <div className="card p-5">
-            {c5.metric === "group" ? (
+            {chartData.total === 0 ? (
+              <Empty icon="reports" title="داده‌ای با این فیلترها نیست" sub="بازه زمانی شمسی یا فیلترهای تجهیزات، شیفت و تکنسین را تغییر دهید" />
+            ) : c5.metric === "group" ? (
               <div className="flex flex-wrap items-center justify-center gap-8">
                 <Donut size={190} thick={c5.type === "donut" || c5.type === "pie" ? (c5.type === "pie" ? 60 : 26) : 26} center={fa(chartData.byGroup.reduce((a, b) => a + b.value, 0))} sub="کنترل"
                   segs={chartData.byGroup.map((g, i) => ({ value: g.value, color: ["var(--primary)", "var(--accent)", "var(--ok)", "var(--warn)", "var(--info)", "var(--nok)"][i % 6], label: g.label }))} />

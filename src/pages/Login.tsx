@@ -6,6 +6,105 @@ import { useEffect, useState } from "react";
 import { useApp } from "../lib/store";
 import { fa, faTime } from "../lib/util";
 import { Icon, useNow } from "../components/ui";
+import type { ThemeCustom } from "../lib/types";
+
+/* ---------- تم‌های قابل انتخاب از صفحه ورود (بند ۶۴) ---------- */
+const LOGIN_THEMES = [
+  { id: "industrial-dark", name: "صنعتی تاریک", colors: ["#0e1114", "#f5a524"] },
+  { id: "corporate-light", name: "روشن اداری", colors: ["#eef0ee", "#2f6db3"] },
+  { id: "high-contrast", name: "کنتراست بالا", colors: ["#000000", "#ffd60a"] },
+  { id: "nipco", name: "سازمانی NIPCO", colors: ["#0a1626", "#ff7a1a"] },
+];
+
+/** پنل شناور شخصی‌سازی ظاهر — حتی پیش از ورود قابل استفاده است و در مرورگر ذخیره می‌شود */
+function ThemeDock() {
+  const { st, setTheme } = useApp();
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState<ThemeCustom>(st.theme.custom);
+  const lbl = { fontSize: 10, fontWeight: 700, color: "rgba(231,235,239,.55)", display: "block", marginBottom: 4 } as const;
+  const darkCtl = { background: "rgba(255,255,255,.07)", borderColor: "rgba(255,255,255,.15)", color: "#e7ebef" };
+
+  return (
+    <>
+      <button onClick={() => setOpen(!open)} title="شخصی‌سازی ظاهر سامانه" aria-label="شخصی‌سازی ظاهر"
+        className="fixed top-5 left-5 z-[60] w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-110 active:scale-95"
+        style={{ background: "rgba(14,18,24,.78)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,.16)", color: "var(--primary)", boxShadow: "0 10px 30px rgba(0,0,0,.5)" }}>
+        <Icon name="palette" size={19} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
+          <div className="fixed top-[72px] left-5 z-[60] glass rounded-xl p-4 w-[304px] anim-pop" style={{ boxShadow: "0 30px 80px rgba(0,0,0,.55)", color: "#e7ebef" }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-extrabold text-[13px] flex items-center gap-2"><Icon name="palette" size={15} /> شخصی‌سازی ظاهر</span>
+              <button className="cursor-pointer opacity-60 hover:opacity-100 transition-opacity" onClick={() => setOpen(false)} aria-label="بستن"><Icon name="x" size={15} /></button>
+            </div>
+
+            {/* انتخاب تم آماده */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {LOGIN_THEMES.map((t) => (
+                <button key={t.id} onClick={() => setTheme({ id: t.id, custom })}
+                  className="rounded-lg px-2.5 py-2 text-right cursor-pointer transition-all duration-150 hover:-translate-y-0.5"
+                  style={{ background: st.theme.id === t.id ? "color-mix(in srgb, var(--primary) 14%, transparent)" : "rgba(255,255,255,.05)", border: `1px solid ${st.theme.id === t.id ? "var(--primary)" : "rgba(255,255,255,.12)"}` }}>
+                  <span className="flex items-center gap-1.5">
+                    {t.colors.map((c) => <span key={c} className="w-3 h-3 rounded-full border" style={{ background: c, borderColor: "rgba(255,255,255,.25)" }} />)}
+                  </span>
+                  <span className="block text-[10.5px] font-bold mt-1.5">{t.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* رنگ‌ها */}
+            <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+              <div>
+                <label style={lbl}>رنگ اصلی</label>
+                <input type="color" value={custom.primary} onChange={(e) => setCustom({ ...custom, primary: e.target.value })}
+                  className="w-full h-9 rounded-lg cursor-pointer" style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.15)" }} />
+              </div>
+              <div>
+                <label style={lbl}>رنگ ثانویه</label>
+                <input type="color" value={custom.accent} onChange={(e) => setCustom({ ...custom, accent: e.target.value })}
+                  className="w-full h-9 rounded-lg cursor-pointer" style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.15)" }} />
+              </div>
+            </div>
+
+            {/* فونت و حالت */}
+            <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+              <div>
+                <label style={lbl}>فونت سیستم</label>
+                <select className="select !py-2 !text-[11.5px]" style={darkCtl} value={custom.font} onChange={(e) => setCustom({ ...custom, font: e.target.value as ThemeCustom["font"] })}>
+                  <option value="Vazirmatn">وزیرمتن</option>
+                  <option value="Lalezar">لاله‌زار</option>
+                  <option value="Markazi Text">مرکزی</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>حالت</label>
+                <select className="select !py-2 !text-[11.5px]" style={darkCtl} value={custom.mode} onChange={(e) => setCustom({ ...custom, mode: e.target.value as ThemeCustom["mode"] })}>
+                  <option value="dark">تاریک</option>
+                  <option value="light">روشن</option>
+                </select>
+              </div>
+            </div>
+
+            {/* گردی گوشه‌ها */}
+            <div className="mb-3.5">
+              <label style={lbl}>گردی گوشه‌ها: <span className="num">{fa(custom.radius)}</span> پیکسل</label>
+              <input type="range" min={0} max={22} value={custom.radius} onChange={(e) => setCustom({ ...custom, radius: +e.target.value })} className="w-full" style={{ accentColor: "var(--primary)" }} />
+            </div>
+
+            <button className="btn btn-primary w-full" onClick={() => setTheme({ id: "custom", custom })}>
+              <Icon name="check" size={14} /> اعمال تم سفارشی
+            </button>
+            <p className="text-[9.5px] text-center mt-2.5 leading-5" style={{ color: "rgba(231,235,239,.4)" }}>
+              انتخاب شما در این مرورگر ذخیره می‌شود و بلافاصله در تمام صفحات اعمال خواهد شد
+            </p>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
 
 const DEMOS = [
   { label: "مدیر سیستم", u: "admin", p: "admin123" },
@@ -44,6 +143,7 @@ export function Login() {
 
   return (
     <div className="login-bg min-h-screen relative overflow-hidden" style={{ color: "#e7ebef" }}>
+      <ThemeDock />
       <div className="grid-overlay absolute inset-0" />
       {/* نوار خطر صنعتی */}
       <div className="hazard absolute top-0 left-0 right-0 h-[6px] opacity-80" />
